@@ -1,6 +1,14 @@
-# Desarrollo de un Programa en el Simulador Granada para Leer Números de una Cédula de Identidad
+# Desarrollo de un Programa para Leer Números de una Cédula de Identidad Utilizando el micorprocesador Intel 8085
 
-En esta página, exploraremos la creación de un emocionante proyecto que involucra la programación en el simulador Granada. El objetivo principal de este proyecto es desarrollar un programa capaz de leer los números de una cédula a través de un teclado numérico y almacenarlos en una región de memoria llamada "lista". Luego, al presionar la tecla "*" en el teclado, podremos mostrar cada uno de los números presionados previamente en un display.
+En esta página, mostraremos el resultado de la implementación de un código diseñado para el simulador Granada, y en base a este diseñaremos un código para su implementación en caso real, ya que, como veremos más adelante, el simulador Granada no contempla la utilización de periféricos. El objetivo principal de este proyecto es desarrollar un programa capaz de leer los números de una cédula a través de un teclado numérico y almacenarlos en una región de memoria llamada "lista". Luego, al presionar la tecla "*" en el teclado, podremos mostrar cada uno de los números presionados previamente en un display.
+
+## Video del programa simulado en granada:
+
+https://drive.google.com/file/d/1g_87pHcdl1Lza3LHfqnQmHLzU5hzYqMc/view?usp=drive_web
+
+<br>
+
+## Circuito deseñado para la implementación del progragrama realizado con el software de granada en un caso real
 
 <br>
 
@@ -9,6 +17,7 @@ En esta página, exploraremos la creación de un emocionante proyecto que involu
 </div>
 
 <br>
+
 
 ## Características Destacadas del Microprocesador 8085
 
@@ -50,7 +59,7 @@ Por último, podemos ver en la figura de abajo que en el puerto B del 8355 se co
 
 ## CONSIDERACIONES ACERCA DE LOS DISPOSITIVOS EXTERNOS AL 8085 Y CAMBIOS AL PROGRAMA
 
-El programa hecho anteriormente fue para un caso específico utilizando el simulador Granada, el cual no toma en cuenta los dispositivos externos al 8085. En esta sección se tomarán en cuenta los dispositivos que se mostraron en el diagrama diseñado y los cambios que se deben realizar al programa.
+El programa adjuntado fue diseñado para un caso específico, utilizando el simulador Granada, el cual no toma en cuenta los dispositivos externos al 8085. En esta sección se tomarán en cuenta los dispositivos que se mostraron en el diagrama diseñado y los cambios que se deben realizar al programa.
 
 Primero, como vimos, para sustituir el teclado del simulador se usará uno tipo matriz numérico de 12 teclas (habría que hacer una pequeña rutina en el 8085 para transformar la salida de ese teclado a su correspondiente código ASCII para hacerlo compatible con el resto del programa ya hecho en la sección anterior).
 
@@ -69,6 +78,331 @@ Donde cada línea de cada puerto se puede programar independientemente con un 0 
 Por último, se realizarán cambios en el código 7 segmentos ya que el simulador utiliza un código diferente al de un display 7 segmentos real ánodo común.
 
 Todos estos cambios se muestran en el programa rediseñado tomando en cuenta factores externos al 8085 en las páginas siguientes:
+
+```
+; PROGRAMA DE INICIO: se encarga de inicializar el programa apagando el display,
+; primero configurando los puertos, luego los registros que se utilizarán como contadores
+; y apuntando la dirección donde se comenzará a guardar los números de la C.I,
+; luego de esto entrará en un bucle hasta que se presione una tecla, que
+; finalizará guardando en el registro E el código ASCII de la tecla presionada
+; ------------------------------------------------------------------------------
+.org 0000h      ; Configuración de puertos
+		MVI A,0FH		; Mitad entrada, mitad salida
+		OUT 02H			; Configuro el puerto A
+		MVI A,FFH		; Todo salida
+		OUT 03H			; Configuro el puerto 		              
+		MVI A,FFH    ; Apagar el display
+		OUT 05H
+		MVI A,08H		; Contador 1 (indica cuántos datos he guardado)
+		MOV C,A		
+		MVI A,08H		; Contador 2 (indica cuántos datos he mostrado en el display)
+		MOV B,A
+		LXI H,2000H  ; Apuntar la dirección donde guardaré los números de la C.I
+
+BUCLE: 
+		MVI A,0FFh    ; Desseleccionar todas las columnas y filas
+    OUT 00H
+		
+		MVI A,0EFh  ; Escanear columna 1
+    OUT 00H
+		IN 00H			; Leer el puerto A
+		CPI 0FEH		; Si el pin A0=0, envía el número 0, de lo contrario, salta a la fila siguiente
+		JZ UNO1		
+		CPI 0FDH		; Si el pin A1=0, envía el número 2, de lo contrario, salta a la fila siguiente
+		JZ DOS1
+		CPI 0FBH		; Si el pin C2=0, envía el número 4, de lo contrario, salta a la fila siguiente
+		JZ TRES1
+				
+		MVI A,06Fh  ; Escanear columna 2
+    OUT 00H
+		IN 00H
+		CPI 0FEH
+		JZ CUATRO1
+		CPI 0FDH
+		JZ CINCO1
+		CPI 0FBH
+		JZ SEIS1
+		
+		MVI A,0BFh  ; Escanear columna 3
+    OUT 00H
+		IN 00H
+		CPI 0FEH
+		JZ SIETE1
+		CPI 0FDH
+		JZ OCHO1
+		CPI 0FBH
+		JZ NUEVE1
+
+		OUT 00H
+		IN 00H
+		CPI 0FEH
+		JZ ASTERISCO
+		CPI 0FDH
+		JZ CERO1
+		CPI 0FBH
+		JZ NUMERAL
+		JMP BUCLE		; vuelvo a inicio
+
+CERO1:
+    MVI E,'0'
+		JMP GUARDAR
+UNO1:
+    MVI E,'1'
+		JMP GUARDAR
+DOS1:
+	  MVI E,'2'
+		JMP GUARDAR
+TRES1:
+  	MVI E,'3'
+		JMP GUARDAR
+CUATRO1:
+  	MVI E,'4'
+		JMP GUARDAR
+CINCO1:
+    MVI E,'5'
+		JMP GUARDAR
+SEIS1:
+    MVI E,'6'
+		JMP GUARDAR
+SIETE1:
+  	MVI E,'7'
+		JMP GUARDAR
+OCHO1:
+    MVI E,'8'
+		JMP GUARDAR
+NUEVE1:
+    MVI E,'9'
+		JMP GUARDAR
+ASTERISCO:
+  	MVI E,'*'
+		JMP GUARDAR
+NUMERAL:
+    MVI E,'#'
+		JMP GUARDAR
+
+; ------------------------------------------------------------------------------
+; SUBRUTINA GUARDAR: se encarga de guardar en una lista los dígitos
+; de un número de cedula y luego mostrarlos en un display
+; -----------------------------------------------------------------------------
+
+GUARDAR:
+		DI			      ; deshabilito interrupciones
+		DCR C		    	; indico que guarde el primer dígito
+		MOV A,C
+
+		CPI 00H			  ; si es el dígito que guarde es el 8 
+		JZ  CEDULA		; pasar a mostrar los dígitos introducidos
+
+		CPI 55H			  ; si ya intruduje los 8 dígitos
+		JZ  CEDULA2		; ver si la tecla que se presionó es *
+
+		MOV A,E			; sino leer el dígito
+		MOV M,A			; guardo el dígito
+		INX H			  ; aviso que ya leí el dígito
+		JMP BUCLE		; espero a que se introduzca el siguiente
+
+; SUBRUTINAS CEDULA Y CEDULA1: se encargan de avisar al programa principal que ya se introdujeron los 8 dígitos de la cédula y ahora debe mostrarlos en el display
+; ---------------------------------------------------------------------------------
+
+CEDULA:	MOV A,E		; leo el último dígito
+		MOV M,A			  ; guardo el último dígito
+		LXI H,2000H		; apunto al inicio de la lista
+		MVI A,56H	  	; indico que ya se guardaron todos los dígitos
+		MOV C,A
+		JMP BUCLE		  ; espero a que se presione *
+
+CEDULA2:	MVI A,56H		; indico que ya se guardaron todos los dígitos
+		MOV C,A
+		MOV A,E		      	; veo qué tecla se pulsó
+		CPI '*'
+		JZ MOSTRAR	    	; si se pulsó el *, mostrar el dígito en el display
+		JMP BUCLE		      ; sino esperar a que se pulse *
+
+; ---------------------------------------------------------------------------
+; SUBRUTINA MOSTRAR: se encarga de transformar el código ASCII de los dígitos
+; de la lista en su equivalente 7seg y mostrarlos en el display.
+; ---------------------------------------------------------------------------
+
+MOSTRAR:
+    MOV A,M			; veo el dígito que indica la pila
+		CPI '0'			; veo cuál de los 10 dígitos posibles
+		JZ CERO			; fue el pulsado
+		CPI '1'
+		JZ UNO
+		CPI '2'
+		JZ DOS
+		CPI '3'
+		JZ TRES
+		CPI '4'
+		JZ CUATRO
+		CPI '5'
+		JZ CINCO
+		CPI '6'
+		JZ SEIS
+		CPI '7'
+		JZ SIETE
+		CPI '8'
+		JZ OCHO
+		CPI '9'
+		JZ NUEVE
+		JMP BUCLE
+
+CERO:
+  	MVI A,C0H	        	; si fue 0
+		OUT 07H		        	; mostrar el código 7seg en el display
+		INX H			          ; apunto al siguiente dígito
+		CALL RETARDO      	; espero un momento
+		DCR B			          ; indico que ya mostré un dígito
+		CPI 00H		        	; veo si ya mostré todos los dígitos
+		JZ FIN		         	; si es así, ir a finalizar
+		JMP BUCLE
+
+UNO:
+  	MVI A,FAH		;se repite lo mismo para los demas numeros
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+DOS:
+  	MVI A,0A4H
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+TRES:
+  	MVI A,0B0H
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+CUATRO:
+  	MVI A,099H
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+CINCO:
+  	MVI A,92H
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+SEIS:
+    MVI A,82H
+		OUT 07H
+		INX H
+		CALL RETARDO		
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+OCHO:
+  	MVI A,00H
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+
+NUEVE:
+  	MVI A,10H
+		OUT 07H
+		INX H
+		CALL RETARDO
+		DCR B
+		MOV A,B
+		CPI 00H
+		JZ  FIN
+		JMP BUCLE
+	
+
+;-----------------------------------------------------------------
+;subrutina FIN: se encarga de apagar y encender el display 5 veces
+;para indicar el fin del programa.
+;-----------------------------------------------------------------
+
+FIN:
+		MVI A,08H
+		OUT 05H
+		CALL RETARDO
+		MVI A,00H
+		OUT 05H
+		CALL RETARDO
+
+		MVI A,08H
+		OUT 05H
+		CALL RETARDO
+		MVI A,00H
+		OUT 05H
+		CALL RETARDO
+
+		MVI A,08H
+		OUT 05H
+		CALL RETARDO
+		MVI A,00H
+		OUT 05H
+		CALL RETARDO
+
+    MVI A,08H
+    OUT 05H
+    CALL RETARDO
+    MVI A,00H
+    OUT 05H
+    CALL RETARDO
+    HLT
+
+; -----------------------------------------------------------------
+; Subrutina RETARDO
+; -----------------------------------------------------------------
+
+RETARDO:
+MVI E,FFH		      ; cargo en el registro E FFh
+NEXT:	MVI D,20H		; cargo en el registro D 20h
+BACK:	DCR D			  ; decremento el registro D
+JNZ BACK		      ; sino es 0 el registro, seguir decrementando
+DCR E			        ; si es 0, decrementar el registro E
+JNZ NEXT	    	  ; sino es 0 el registro E, volver a decrementar el registro D hasta que sea 0
+RET			          ; si es 0 el registro E, retornamos
+
+```
 
 ## CONCLUSIÓN
 En este proyecto, hemos logrado diseñar y desarrollar un programa altamente funcional que demuestra la capacidad de leer números de una cédula introducidos en un microprocesador 8085 a través de un teclado numérico. Este programa ha demostrado ser eficiente al almacenar los números en una región de memoria y permitir la visualización de los dígitos presionados en un display al presionar la tecla o "*".
